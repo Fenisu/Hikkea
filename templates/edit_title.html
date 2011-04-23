@@ -1,0 +1,13 @@
+{% extends base %}
+
+{% block scripts %}
+changeLinks();
+inputTitle();
+{% endblock %}
+
+{% block content %}
+<div>
+    <input id="id_form-0-name" type="text" name="form-0-name" maxlength="64" title="{{ form.forms.0.name.label }}" />
+    {{ form }}
+</div>
+{% endblock %}

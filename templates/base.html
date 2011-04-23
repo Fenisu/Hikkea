@@ -1,0 +1,91 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="{{ lang }}" dir="ltr" lang="{{ lang }}"> 
+    <head profile="http://gmpg.org/xfn/11"> 
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /> 
+        <title>{{ title }}</title> 
+        <!-- Escrito con Kate en entorno KDE4 bajo un sistema GNU/Linux (Distribución Archlinux) --> 
+        <script type="text/javascript" src="/static/js/jquery.min.js"></script>
+        <script type="text/javascript" src="/static/js/jquery-ui.min.js"></script>
+        <link type="text/css" rel="stylesheet" href="/static/js/css/smoothness/jquery-ui-1.8.11.custom.css" />
+        <link type="text/css" rel="stylesheet" href="/static/css/base.css" />
+        <link type="text/css" rel="stylesheet" href="/static/themes/default/css/style.css" />
+        <script type="text/javascript" src="/static/js/jquery.history.js"></script>
+        <script type="text/javascript" src="/static/js/functions.js"></script> 
+        <script type="text/javascript">
+            <!--
+            $(document.body).ready(function () {
+                {% block scripts %}{% endblock %}
+            });
+            -->
+        </script> 
+    </head> 
+ 
+    <body>
+        <div id="logs" title="Consola de depuración" class="ui-corner-all">
+            
+        </div>
+    
+        <div id="top">
+        </div>
+        
+        <div id="menu">
+            <ul class="menu" id="nav">
+                <li>
+                    <a href="/index" class="local">Inicio</a>
+                </li>
+                <li>
+                    <a href="">Anime</a>
+                    <ul class="submenu">
+                        <li>
+                            <a href="{% url views.edit_title 'anime' 'add' '' %}" class="local">Añadir título</a>
+                        </li>
+                        <li>
+                            <a href="{% url views.edit_release 'anime' 'add' '' %}" class="local">Añadir release</a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="">Manga</a>
+                    <ul class="submenu">
+                        <li>
+                            <a href="{% url views.edit_title 'manga' 'add' '' %}" class="local">Añadir título</a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="">Dorama</a>
+                    <ul class="submenu">
+                        <li>
+                            <a href="{% url views.edit_title 'dorama' 'add' '' %}" class="local">Añadir título</a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="">Más...</a>
+                </li>
+                <li>
+                    <a href="">Categorías</a>
+                </li>
+                <li>
+                    <a href="">Comunidad</a>
+                </li>
+                <li>
+                    <a href="">Ayuda</a>
+                </li>
+                <li class="right">
+                </li>
+            </ul>
+        </div>
+        
+        <div id="page0">
+            <div id="page">
+                <div id="blocks">
+                </div>
+                <div id="content">
+                {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </body>
+ 
+</html>

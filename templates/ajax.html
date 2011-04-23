@@ -1,0 +1,13 @@
+<html>
+<head>
+<title id="title">{{ title }}</title>
+<script id="prevscripts">
+ajax_options = {}
+ajax_enter = []
+ajax_exit= []
+{% block prescripts %}{% endblock %}
+</script>
+<script id="scripts">{% block scripts %}{% endblock %}</script>
+</head>
+<body><div id="content">{% block content %}{% endblock %}</div></body>
+</html>

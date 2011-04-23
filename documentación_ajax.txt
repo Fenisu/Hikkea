@@ -1,0 +1,420 @@
+Nekmo Com (contacto@nekmo.com)
+Borrador
+Abril 2011
+
+No candidato a estándar.
+
+RESUMEN
+Este manual pretende, en la medida de lo posible, esclarecer 
+la carga de una página mediante la tecnología Ajax, y las
+medidas a tomar en caso de que el cliente no soporte dicha
+tecnología.
+
+TABLA DE CONTENIDO
+1. Introducción
+    1.1 Preámbulos
+    1.2 Terminología
+    1.3 Convenciones en este documento
+    1.4 Interpretación del documento
+2. Lado del cliente
+    2.1 Petición de /
+        2.1.1 Ajax soportado
+        2.1.2 Ajax no soportado
+    2.2 Petición de "contacto"
+        2.2.1 Ajax soportado
+        2.2.2 Ajax no soportado
+3.Lado del servidor
+    3.1 Petición de /
+    3.2 Petición de "contacto"
+        3.2.1 Ajax soportado
+        3.2.2 Ajax no soportado
+4. Ampliación
+5. Casos especiales
+    5.1 Dirección inicial /#!/contacto
+    5.2 Dirección inicial /contacto
+6. Conclusión
+
+1. INTRODUCCIÓN
+1.1 PREÁMBULOS
+Ajax es una técnica de desarrollo web gracias a la cual es
+posible crear webs más dinámicas, interactivas, rápidas y
+usables sin necesidad de recargar la página en la que el
+usuario se encuentra. Esto quiere decir que gracias a Ajax,
+es posible realizar peticiones al servidor sin necesidad
+de refrescar la página, lo cual, dándosele un buen uso,
+se traduce en un menor uso de recursos por ambas partes,
+sobre todo de tráfico.
+
+Para lograr esto, se hace uso de 4 tecnologías que se
+encuentran ya implementadas en la mayoría de navegadores:
+    * (X)HTML y CSS: El primero contiene la información
+    que se mostrará y el segundo le da formato.
+    * DOM: El Document Object Model permite la manipulación
+    del documento de forma dinámica mediante lenguajes de
+    script (véase Javascript).
+    * XMLHttpRequest: Es un protocolo mediante el cual se
+    realizan peticiones HTTP(S) en XML al servidor sin
+    necesidad de recargar la página.
+    * XML: Lenguaje de etiquetas en el que se transfiere
+    la información.
+Por tanto, al hablar de Ajax, no se estará hablando de una
+tecnología en sí, sino de varias de estas trabajando
+conjuntamente.
+
+1.2 TERMINOLOGÍA
+Las palabras clave "SE DEBE", "NO SE DEBE", "REQUERIDO",
+"NO DEBERÍA", "RECOMENDADO", y "OPCIONAL" se encuentran
+registradas en el FRC 2119.
+
+El término HTTP se encuentra recogido en el RFC 2616,
+JSON en el RFC 4627.
+
+CSS, XHTML y XML se encuentran recogido en los estándares
+de la W3. Javascript y XMLHttpRequest no se encuentran
+estandarizados; en su lugar tiene varias implementaciones
+por parte de Netscape Communications Foundation, Mozilla
+Foundation, y aportaciones por Microsoft Corporation.
+
+Las descripciones de  XHTML, CSS, DOM, XMLHttpRequest y
+XML se encuentran en el apartado 1.1 de este documento.
+
+Django es un framework de desarrollo web en Python, con
+una paradigma Modelo de Vista Programador. La documentación
+de este framework puede encontrarse en su sitio web,
+http://docs.djangoproject.com/
+
+Los siguientes términos son exclusivos de este documento,
+usados exclusivamente como ejemplos:
+    * http://example.org es la URL del sitio web.
+    * "/" es la portada del sitio web, entendiéndose como
+    "http://example.org/". Es la primera página que se
+    carga.
+    * "contacto" es la página que se desea cargar. Sin
+    el uso de Ajax, esta sería "http://example.org/contacto",
+    con Ajax se representaría con la url: 
+    "http://example.org/#!contacto".
+1.3 CONVENCIONES EN ESTE DOCUMENTO
+Los términos XHTML y HTML hacen referencia a un concepto
+parecido, aunque no el mismo. A niveles prácticos a la
+hora de implementar, deben ser tomados como iguales,
+teniendo preferencia XHTML. Cuando en este documento se
+haga referencia a XHTML, también se estará haciendo
+referencia a HTML.
+
+HTTPS es una implementación de HTTP cifrada y firmada
+(véase RFC 2818, sección TLS). Aunque las conexiones
+HTTPS sean mucho más recomendables que las HTTP, en
+este documento para referirse a HTTPS y HTTP se utilizará
+el término HTTP.
+
+1.4 INTERPRETACIÓN DEL DOCUMENTO
+En este documento se documentarán 2 procedimientos, con
+2 posibles casos cada uno, desde 2 situaciones diferentes.
+Esto hace un total de 3 subapartados, considerándose así:
+
+* Punto de vista, desde cliente o desde el servidor.
+    * Petición de portada o petición de página "contacto".
+        * Es posible usar Ajax, o no es posible usarlo.
+
+El primer punto describe la situación desde 2 puntos de
+vista diferentes: desde lo que ocurrirá en el lado del
+cliente (el navegador) y del lado del servidor (en este
+caso, usando Django).
+
+En el segundo, deben entenderse 2 situaciones: primero se
+cargará (en el ejemplo) la página "index" (representada
+como "/"), y a partir de esta se cargará otra página
+("/contacto") bien con Ajax o sin este, dependiendo de si
+el navegador lo soporta (apartado 3).
+
+2. LADO DEL CLIENTE
+2.1 PETICIÓN DE /
+El cliente solicita al servidor mediante HTTP la página
+"/", siendo esta, a efectos prácticos, la siguiente:
+
+<html>
+    <head>
+        <title>Portada de http://example.org</title>
+        <script type="text/javascript">
+            <!--
+            [...] Código Javascript [...]
+            -->
+        </script>
+    </head>
+    <body>
+        <div id="menu">
+            <a href="/contacto" class="link">Contacto</a>
+        </div>
+        <div id="contenido">
+            Aquí contenido de la página (en este caso
+            de la portada).
+        </div>
+    </body>
+</html>
+
+El objetivo es cargar la página contacto a través del
+enlace contenido en id="menu", para que se muestra el
+contenido de contacto en id="contenido". Existen 2
+variantes dependiendo de si se permite Ajax o no.
+
+2.1.1 AJAX SOPORTADO
+En caso de encontrarse Ajax habilitado (javascript)
+los enlaces de la portada ("/") cambiarán para que en
+vez de dirigir al enlace de carga sin Ajax ("/contacto")
+que es la que se encuentra por defecto, vayan a la que
+SÍ soporta carga por Ajax ("#!/contacto"). Esto se realiza
+gracias a Javascript. Por tanto, tras modificar el DOM de
+la página, esta quedará como:
+
+<html>
+    <head>
+        <title>Portada de http://example.org</title>
+        <script type="text/javascript">
+            <!--
+            [...] Código Javascript [...]
+            -->
+        </script>
+    </head>
+    <body>
+        <div id="menu">
+            <a href="#!/contacto">Contacto</a>
+        </div>
+        <div id="contenido">
+            Aquí contenido de la página (en este caso
+            de la portada).
+        </div>
+    </body>
+</html>
+
+Lo que hará Javascript será buscar todos los links que
+tengan class="link" y añadir delante "#!". El motivo de
+esto se explicará más adelante.
+
+2.1.2 AJAX NO SOPORTADO
+Si no se pudiese ejecutar Ajax (Javascript inhabilitado
+o no soportado por el navegador) no se llevará al cabo
+ningún cambio en el DOM de la página, ya que será
+imposible hacerlo sin Javascript. Por tanto, el link
+no cambiará y se cargará la página "contacto" sin
+Ajax.
+
+2.2 PETICIÓN DE "CONTACTO"
+2.2.1 AJAX SOPORTADO
+Al pinchar en el link de contacto, la URL cambiará de
+"http://example.org/" a "http://example.org/#!contacto",
+pero no se llegará a recargar la página en ningún momento
+(este comportamiento es gracias a que XHTML establece
+estas peticiones como que se desea saltar al id en
+cuestión dentro de la página. Por ejemplo, al solicitar
+#contenido se saltará a donde estuviese el id="contenido")
+y este cambio en la URL será detectado por el código
+Javascript para realizar la petición Ajax.
+
+El programa Javascript tomará la url a partir de la
+almohadilla ("!contacto") para saber lo que tiene que
+pedir al servidor. Por ejemplo, esta petición puede ser
+a "http://example.org/contacto?ajax=1", devolviéndose lo
+siguiente por Ajax desde el servidor (sin que se recargue
+la página):
+
+Contenido de la página contacto.
+Dirección de email: contact@example.org
+
+El contenido devuelto será puesto dentro de id="contenido"
+gracias a Javascript, mostrándose al usuario junto con el
+resto de la página (el menú, el código Javascript, etc.).
+La petición será llevada al cabo mediante un XMLHttpRequest.
+
+2.2.2 AJAX NO SOPORTADO
+Al pinchar en el link de contacto, la URL cambiará de
+"http://example.org/" a "http://example.org/contacto",
+siendo así una petición HTTP estándar al servidor, recibiendo
+una nueva página completa. El contenido recibido será el
+siguiente:
+
+<html>
+    <head>
+        <title>Contacto de http://example.org</title>
+        <script type="text/javascript">
+            <!--
+            [...] Código Javascript [...]
+            -->
+        </script>
+    </head>
+    <body>
+        <div id="menu">
+            <a href="/contacto">Contacto</a>
+        </div>
+        <div id="contenido">
+            Contenido de la página contacto.
+            Dirección de email: contact@example.org
+        </div>
+    </body>
+</html>
+
+Por tanto, al hacerse una petición aprovechando la
+tecnología Ajax, se ahorran recursos en el consumo
+de recursos del cliente y del servidor.
+
+3. LADO DEL SERVIDOR
+3.1 PETICIÓN DE /
+La petición de la portada ("/") será indiferente de
+si se admite Ajax o no. Al ser la primera petición por
+parte del cliente, no habrá código Javascript ni contenido
+en el cual contener la información, así que a nivel
+técnico es imposible realizar la primera petición por Ajax,
+ni tampoco es interesante.
+
+La página devuelta será la misma a la del apartado 2.1 de
+este documento.
+
+3.2 PETICIÓN DE "CONTACTO"
+La petición se realizará tanto en el caso de Ajax como en
+el de sin Ajax a http://example.org/contacto, pero con una
+diferencia característica entre ambos casos: En el primero
+se añadirá a la petición una variable por GET "ajax" (siendo
+la dirección de la petición "http://example.org/contacto?aja
+x=1") y en el segundo sería a "http://example.org/contacto".
+Esto cambiará el contenido a devolver, aunque la función del
+views.py relacionada a la URL sea la misma.
+
+La función relacionada a la URL, llamémosle contacto, devolverá
+la siguiente plantilla de Django tanto en el caso de Ajax como
+en el de sin Ajax:
+
+{% extends base %}
+
+{% block content %}
+    Contenido de la página contacto.
+    Dirección de email: contact@example.org
+{% endblock %}
+
+Esta página XHTML será denominada como "contacto.html", y
+tiene una variable "base" que será entregada por la función
+"contacto".
+
+3.2.1 AJAX SOPORTADO
+Se realiza una petición al servidor con URL "http://example
+.org/contacto?ajax=1", por lo que la función "contacto" del
+views.py entenderá que la variable "base" del template
+"contacto.html" debe ser "ajax.html", siendo el contenido de
+este template:
+
+{% block content %}{% endblock %}
+
+Si se revisa la documentación de Django, podrá observarse
+que lo que se hace con esto es "extender" la página "contacto
+.html" dentro de "ajax.html", introduciendo el contenido del
+bloque "content" de "contacto.html" en el de "ajax.html". Por
+tanto, el resultado será el del apartado 2.2.1 de este documento.
+
+3.2.2 AJAX NO SOPORTADO
+La petición al servidor no contendrá la variable por GET
+"ajax", por lo que la función "contacto" entenderá que la variable
+"base" será "base.html", siendo el contenido de este template:
+
+<html>
+    <head>
+        <title>{{ name }} de http://example.org</title>
+        <script type="text/javascript">
+            <!--
+            [...] Código Javascript [...]
+            -->
+        </script>
+    </head>
+    <body>
+        <div id="menu">
+            <a href="/contacto">Contacto</a>
+        </div>
+        <div id="contenido">
+            {% block content %}{% endblock %}
+        </div>
+    </body>
+</html>
+
+La aplicación del sistema de plantillas de Django será
+la misma que la del apartado 3.2.1, y el tipo de petición
+será la misma a la del apartado 3.1 (para pedir "/"). El
+resultado será el mismo al del apartado 2.1.2.
+
+4. AMPLIACIÓN
+Existen otras implementaciones diferentes para la
+carga de páginas por Ajax, aunque esta es probablemente
+de las más válidas hoy en día. Para explicar el motivo
+de esto, se explicará otra implementación diferente y
+se mostrarán sus defectos, los cuales se encuentran
+resueltos con la implementación de este documento.
+
+En el apartado 2.1.1, se cambian las direcciones de las
+urls de la página por otros del tipo Ajax, de manera que
+al pulsar en el link, la url de la barra de direcciones
+cambiará, siendo detectado por el programa javascript
+para cargar la página en cuestión por Ajax. Si en vez
+de intentar detectar un cambio en la barra de direcciones
+se detecta el propio hecho de clicar, conseguiremos un
+efecto parecido. Un ejemplo sería:
+
+<a href="#" onMouseOver="cargarPaginaContacto()">contacto</a>
+
+De esta manera, al clicar en "contacto", ejecutaremos
+una función que cargue mediante Ajax la página de
+contacto. Esta posible solución, trae consigo toda una
+seria de problemas: para empezar, al retroceder o
+avanzar con los botones de "volver atrás" e "ir adelante"
+no se conseguirá el efecto deseado, pues la página
+no cambiará. Después, si se guarda en marcadores la
+página, no se cargará la página deseada. Estos problemas
+se solucionan con la implementación de este documento,
+incluidos los de "adelante y atrás" (con una buena
+implementación del programa Javascript), aunque se
+gana otro indirectamente, el cual es explicado en el
+punto 5.1.
+
+5. CASOS ESPECIALES
+En los ejemplos de este documento, todo el tiempo se ha
+partido desde http://example.org/ a la página de contacto
+de la misma, siendo un caso idóneo con diferentes posibilidades
+en la aplicación real, ya que no siempre se parte de "/".
+A continuación 2 casos no documentados anteriormente:
+
+5.1 DIRECCIÓN INICIAL /#!/CONTACTO
+En el hipotético caso de que se acceda a la dirección
+http://example.org/#!/contacto desde los marcadores o
+directamente desde la barra del navegador (nótese que
+la dirección es la de Ajax) no se cargará inicialmente
+"contacto", sino la portada, para después cargar
+mediante ajax "contacto". Esto es debido ya que el
+navegador no le muestra en ningún momento al servidor
+más allá de la almohadilla, por lo que se cargará en
+un inicio la página estática de portada ("/"). Debe
+tenerse en cuenta este caso a la hora de usar Ajax
+ya que en este caso el uso de Ajax es ineficiente, y
+puede provocar que en ciertos casos no sea interesante
+su uso.
+
+5.2 DIRECCIÓN INICIAL /CONTACTO
+Al partir desde http://example.org/contacto, la carga
+de páginas mediante Ajax se mostrará de la siguiente
+forma: "http://example.org/contacto#!/página". Esto
+no deberá de suponer ningún problema a la hora de cargar
+las páginas por Ajax, siendo irrelevante la página
+estática en la que se encuentre el usuario (en este
+caso, "/contacto").
+
+6. CONCLUSIÓN
+El uso de Ajax con una buena implementación puede
+ser beneficioso tanto para el usuario como para el
+servidor, reduciendo los tiempos de carga, el tráfico,
+de procesamiento, etc.
+
+Debe tenerse en cuenta el punto 4.1 para ciertas
+situaciones y sitios enfocados a ciertos usos.
+
+Y por último, este documento debe ser considerado como
+un manual para explicar el funcionamiento de carga
+de páginas por Ajax, pero en ningún momento como uno
+de su implementación. En una implementación real, se
+recomienda añadir un bloque para scripts en la carga
+por Ajax, además de otra información, como el título
+de la página (lo que es representado en el apartado
+3.2.2 como {{name}}).

@@ -1,0 +1,50 @@
+{% extends base %}
+
+{% block scripts %}
+changeLinks();
+inputTitle();
+$('.jshidden').hide();
+AutoComplete("#title_name", "#id_form-0-title", "/ajax/search/title");
+getLibrary('/static/js/jquery.diff.js');
+last_text = ''
+last_pkg = 0
+$('#links').bind('paste keypress', function(event){
+    if(event.type=="paste"||event.keyCode==13){
+        setTimeout(function() {
+            var diff = $.diff(last_text, $('#links').val())
+            last_text = diff.add_list.join('')
+            htmlAjax('{% url views.ajax_add_packages %}', ({'links': last_text,
+                                                            'last_pkg': last_pkg}))
+        }, 100);
+    }
+});
+
+$("#packages ol").sortable({connectWith: "#packages ol"});
+
+$("#packages ol").droppable({
+        accept: ":not(.ui-sortable-helper)",
+        drop: function( event, ui ) {
+                $( this ).find( ".placeholder" ).remove();
+                $( "<li></li>" ).text( ui.draggable.text() ).appendTo( this );
+        }
+})
+{% endblock %}
+
+{% block content %}
+<form enctype="multipart/form-data" action="" method="post">
+    <div>
+        <div class="jshidden">{{ form.forms.0.title.label_tag }}</div><input id="title_name" type="text" name="title_name" maxlength="64" title="Título de la obra" />
+        <select name="form-0-title" id="id_form-0-title" class="csshidden">
+            <option value="" selected="selected"></option> 
+        </select>
+    </div>
+    <div id="packages">
+    <h2>Capítulos</h2>
+{% include "edit_packages.html" %}
+    </div>
+    <div>
+        <textarea id="links" title="Links de las descargas"></textarea>
+    </div>
+    {{ form }}
+</form>
+{% endblock %}
