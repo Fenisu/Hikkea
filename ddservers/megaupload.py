@@ -32,7 +32,7 @@ class Server(base.Base):
         if len(self.cookie_j):
             return True
 
-    def check(self, url, links=False):
+    def check(self, url, links=False, errors=None):
         """Checkear el estado de un enlace."""
         data = request.urlopen(self.check_url,
                                 parse.urlencode({"id0": url.split('d=')[1]}), 5).read()
@@ -47,14 +47,15 @@ class Server(base.Base):
             name = url
             size = -1
 
-        val = {'status': status,
-                    'name': name,
-                    'size': size,
-                    'size2': size2,
-                    'url': url,
-                    'message': '',
-                    'server': self.server_name,
-                    }
+        val = {
+            'status': status,
+            'name': name,
+            'size': size,
+            'size2': size2,
+            'url': url,
+            'message': '',
+            'server': self.server_name,
+        }
         if links != False:
             links.append(val)
         return val

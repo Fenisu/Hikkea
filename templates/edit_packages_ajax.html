@@ -1,5 +1,21 @@
 {% extends base %}
 
+{% block prevscripts %}
+ajax_enter = {'#content': {'to': '#packages',
+                           'action': 'replace',
+                           'effect': 'instant'
+                           },
+              '.update_vals': {'to': '',
+                               'action': 'uptdate',
+                               'effect': 'instant'}
+              }
+window["last_pkg"] = {{ last_pkg }}
+{% endblock %}
+
+{% block scripts %}
+{% include "edit_packages_js.html" %}
+{% endblock %}
+
 {% block content %}
 {% include "edit_packages.html" %}
 {% endblock %}

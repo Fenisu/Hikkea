@@ -14,6 +14,8 @@ urlpatterns = patterns('',
     
     ('^ajax/search/title', 'views.ajax_search_title'),
     
+    ('^ajax/search/fansub', 'views.ajax_search_fansub'),
+    
     ('^ajax/packages/add', 'views.ajax_add_packages'),
     
     ('^(anime|dorama|manga)/rls/(add|edit)/?(|\d+)', 'views.edit_release'),

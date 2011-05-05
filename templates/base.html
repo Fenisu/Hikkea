@@ -14,6 +14,14 @@
         <script type="text/javascript">
             <!--
             $(document.body).ready(function () {
+                $( "#user.login button" ).button({
+                    icons: {
+                        primary: "ui-icon-key",
+                        secondary: "ui-icon-arrowthick-1-e"
+                    },
+                    text: false
+                });
+            
                 {% block scripts %}{% endblock %}
             });
             -->
@@ -26,6 +34,18 @@
         </div>
     
         <div id="top">
+            <div id="subtop">
+                <div id="user" class="login">
+                    <input type="text" name="username" maxlength="64" title="Usuario" />
+                    <input type="password" name="username" maxlength="64" title="Contraseña" />
+                    <div>
+                        <a href="">¡Registrame!</a>
+                        <a href="">Recuperar clave</a>
+                    </div>
+                    <button>Acceder</button>
+
+                </div>
+            </div>
         </div>
         
         <div id="menu">

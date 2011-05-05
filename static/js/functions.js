@@ -1,27 +1,47 @@
 $(document.body).ready(function (){
-    (function($) {
-        $.fn.ajaxLoader = function() {
-            var data = this;
-            var default_ajax_enter = {'#content': {'to': '#content',
-                                                   'action': 'replace',
-                                                   'effect': 'instant'
-                                                   },
-                                      '#title': {'to': 'head title',
-                                                     'action': 'replace',
-                                                     'effect': 'instant'
-                                                   }
-                                      }
-            var ajax_enter = jQuery.extend(default_ajax_enter, ajax_enter);
-            $.each(ajax_enter, function(key, val){
-                var from = $(data).filter(key).html();
-                if(val['action']=='replace'){
-                    $(val['to']).html(from)
-                } else {
-                    val['action'](data, key, val)
-                }
-            });
-        }
-    })(jQuery);
+    $.ajaxLoader = function(data) {
+        data = data.replace(/<script/g, '<scr_ipt')
+        data = data.replace(/<\/script>/g, '</scr_ipt>')
+
+        eval($(data).filter('#prevscripts').html());
+        var default_ajax_enter = {'#content': {'to': '#content',
+                                                'action': 'replace',
+                                                'effect': 'instant'
+                                                },
+                                    '#title': {'to': 'head title',
+                                                    'action': 'replace',
+                                                    'effect': 'instant'
+                                                }
+                                    }
+        var ajax_enter = jQuery.extend(default_ajax_enter, ajax_enter);
+        $.each(ajax_enter, function(key, val){
+            if(val['action']=='replace'){
+                from = $('<div />').html(data).find(key).html();
+                $(val['to']).html(from)
+            } else if(val['action']=='none'){
+                // No hacer nada...
+            } else if(val['action']=='update') {
+                $.each($('<div />').html(data).find(key), function(i, obj){
+                    var name = $(obj).attr('class');
+                    if($(obj).is('[type=radio]')){
+                        if($(obj).is(':checked')){
+                            $('[class="' + name + '"][value="' + $(obj).attr('value') + '"]').attr('checked', 'checked')
+                        }
+                    } else if($(obj).is('select')) {
+                        console.debug($(obj).val())
+                        $('[class="' + name + '"]').val($(obj).val())
+                    } else {
+                        var value = $(obj).val();
+                        if(!$('[class="' + name + '"]').val()||$('[class="' + name + '"]').attr('title')==$('[class="' + name + '"]').val()){
+                            $('[class="' + name + '"]').val(value)
+                        }
+                    }
+                });
+            } else {
+                val['action'](data, key, val)
+            }
+        });
+    }
     
     gotlibs = new Array()
     getLibrary = function(url){
@@ -92,7 +112,7 @@ $(document.body).ready(function (){
         });
     }
     
-    htmlAjax = function(hash, post){
+    htmlAjax = function(hash, post, lock){
         logging.debug('Cargando mediante Ajax ' + hash);
         if(post){
             var type = 'POST'
@@ -105,11 +125,16 @@ $(document.body).ready(function (){
         type: type,
         data: post,
         success: function(data){
-            eval($(data).filter('#prevscripts').html());
-            $(data).ajaxLoader();
+            $.ajaxLoader(data);
             // Se ha terminado de poner el contenido, se ejecutan
             // scripts de después
             eval($(data).filter('#scripts').html());
+            if(lock){
+                window[lock] = false
+            }
+        },
+        error: function(data){
+            window[lock] = false
         }
         });
     }
@@ -154,4 +179,31 @@ $(document.body).ready(function (){
             }
         });
     }
+
+$.fn.setCursorPosition = function(pos) {
+    // Establecer el cursor en un input en una determinada
+    // posición.
+    this.each(function(index, elem) {
+        if (elem.setSelectionRange) {
+        elem.setSelectionRange(pos, pos);
+        } else if (elem.createTextRange) {
+        var range = elem.createTextRange();
+        range.collapse(true);
+        range.moveEnd('character', pos);
+        range.moveStart('character', pos);
+        range.select();
+        }
+    });
+    return this;
+};
+
+$.fn.setCursor2LastPosition = function(pos) {
+    // Establecer el cursor en un input exactamente en
+    // la última posición
+    this.each(function(index, elem) {
+        $(elem).setCursorPosition($(elem).val().length)
+    });
+    return this;
+};
+
 });

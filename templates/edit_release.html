@@ -1,33 +1,93 @@
 {% extends base %}
+{% load forms %}
+
+{% block prevscripts %}
+{% if last_pkg > 0 %}
+ajax_enter = {'#content': {'to': '',
+                           'action': 'none',
+                           'effect': ''
+                           },
+             {% if first_request %}
+             '#packages': {'to': '#packages',
+                           'action': 'replace',
+                           'effect': 'instant'
+                           },
+             {% else %}
+             '#sorted': {'to': '#sorted',
+                           'action': function(data, key, val){
+                                         var packages = $('<div />').html(data).find(key).find("ul.packages").children('li');
+                                         $.each($(packages), function(index, package){
+                                             var npackage = $(package).find('.chapter').text() - 1
+                                             var after_to = $(val['to']).find('ul.packages').children('li:eq(' + npackage + ')')
+                                             $(after_to).after($(package))
+                                         });
+                                     },
+                           'effect': 'instant'
+                           },
+             {% endif %}
+              '.update_vals': {'to': '',
+                               'action': 'update',
+                               'effect': 'instant'}
+              }
+{% endif %}
+window["last_pkg"] = {{ last_pkg|default:0 }}
+{% endblock %}
 
 {% block scripts %}
 changeLinks();
 inputTitle();
 $('.jshidden').hide();
 AutoComplete("#title_name", "#id_form-0-title", "/ajax/search/title");
+AutoComplete("#fansub_name", "#id_form-0-fansub", "/ajax/search/fansub");
 getLibrary('/static/js/jquery.diff.js');
+{% if last_pkg == 0 %}
 last_text = ''
 last_pkg = 0
-$('#links').bind('paste keypress', function(event){
-    if(event.type=="paste"||event.keyCode==13){
+lock_links = false
+$('#links').live('paste keypress', function(event){
+    if(event.type=="paste"&&!lock_links||event.keyCode==13&&!lock_links){
         setTimeout(function() {
+            window['']
             var diff = $.diff(last_text, $('#links').val())
-            last_text = diff.add_list.join('')
-            htmlAjax('{% url views.ajax_add_packages %}', ({'links': last_text,
-                                                            'last_pkg': last_pkg}))
+            now_diff = diff
+            window['last_text'] = $('#links').val()
+            window['lock_links'] = true
+            htmlAjax('{% url views.ajax_add_packages %}',
+                     ({'links': diff.add_list.join(''),
+                       'last_pkg': last_pkg}),
+                     'lock_links'
+                    )
         }, 100);
     }
 });
+{% endif %}
 
-$("#packages ol").sortable({connectWith: "#packages ol"});
-
-$("#packages ol").droppable({
+$("ul.part").sortable({connectWith: "ul.part",
+                       cursor: 'move',  
+                       update: function(event, ui){
+                           $(ui.item).find('span.chapter').alert(ui.position)
+                       },
+});
+$("#packages ul.packages").sortable({connectWith: "ul.packages",
+                           update: function(event, ui){
+                               function changeNumberPackage(i, item){
+                                   $(item).find('span.chapter').text(i);
+                               }
+                               $.each($(this).children("li"), changeNumberPackage);
+                           },
+                           cursor: 'move',   
+});
+$(".delete").live('click', function(){
+    $(this).parent().hide();
+});
+$('input.tolastpos').setCursor2LastPosition()
+{% comment %}$("#packages ol").droppable({
         accept: ":not(.ui-sortable-helper)",
         drop: function( event, ui ) {
                 $( this ).find( ".placeholder" ).remove();
                 $( "<li></li>" ).text( ui.draggable.text() ).appendTo( this );
         }
-})
+});{% endcomment %}
 {% endblock %}
 
 {% block content %}
@@ -43,8 +103,23 @@ $("#packages ol").droppable({
 {% include "edit_packages.html" %}
     </div>
     <div>
-        <textarea id="links" title="Links de las descargas"></textarea>
+        <textarea id="links" title="Pegue aquí los links de las descargas" rows="6" cols="40"></textarea>
     </div>
-    {{ form }}
+    {% if form.download_type %}{{ form.download_type }}{% else %}{{ form.forms.0.download_type }}{% endif %}
+    <div>
+        <label for="fansub_name">Fansub</label><input id="fansub_name" type="text" name="fansub_name" maxlength="64" class="update_vals fansub_name" value="{% if other_data.fansub %}{{ other_data.fansub.name }}, {{ other_data.fansub.microname }}{% endif %}" />
+        <select name="form-0-fansub" id="id_form-0-fansub" class="csshidden">
+            <option value="{{ other_data.fansub.id }}" selected="selected" class="update_vals fansub"></option> 
+        </select>
+    </div>
+    {% if form.container %}{{ form.container }}{% else %}{{ form.forms.0.container }}{% endif %}
+    {% if form.videocodec %}{{ form.videocodec }}{% else %}{{ form.forms.0.videocodec }}{% endif %}
+    {% if form.resolution %}{{ form.resolution }}{% else %}{{ form.forms.0.resolution }}{% endif %}
+    {% if form.audiocodec %}{{ form.audiocodec }}{% else %}{{ form.forms.0.audiocodec }}{% endif %}
+    {% if form.audiohertz %}{{ form.audiohertz }}{% else %}{{ form.forms.0.audiohertz }}{% endif %}
+    {% if form.audiochannel %}{{ form.audiochannel }}{% else %}{{ form.forms.0.audiochannel }}{% endif %}
+    {% if form.subtitlecode %}{{ form.subtitlecode }}{% else %}{{ form.forms.0.subtitlecodec }}{% endif %}
+    {% if form.alang %}{{ form.alang }}{% else %}{{ form.forms.0.alang }}{% endif %}
+    {% if form.slang %}{{ form.slang }}{% else %}{{ form.forms.0.slang }}{% endif %}
 </form>
 {% endblock %}

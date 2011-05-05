@@ -22,6 +22,16 @@ def namepackage(value):
     # Se quita el partX
     return re.sub('\.part\d+$|\.\d+$', '', value)
 
+@register.filter(name='ifnull')
+def ifnull(value, default):
+    print(value)
+    print(default)
+    if value:
+        return value
+    else:
+        return default
+
+
 #@register.filter(name='radio')
 #def radio(value):
     #options = []

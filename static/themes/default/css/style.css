@@ -11,6 +11,10 @@ h1 {
     font-size: 12px !important;
 }
 
+a {
+    text-decoration: none;
+}
+
 #logs { 
     background: #303030;
 }
@@ -37,7 +41,60 @@ FATAL rojo chillon parpadeante*/
 /* Sección del top */
 #top {
     height: 100px;
-    background: #383838;
+    background: #383838 url(../img/top_background.png);
+}
+
+#subtop {
+    margin: 0 auto 0 auto;
+    width: 900px;
+    height: 100%;
+}
+
+#user {
+    width: 160px;
+    float: right;
+}
+
+#user.login div {
+    float:left;
+}
+
+#user.login .ui-button-text {
+/*     padding-left: 25px; */
+/*     padding-right: 5px; */
+}
+
+#user.login input {
+    display: block;
+    margin-top: 7px;
+    margin-bottom: 7px;
+    width: 100%;
+}
+
+#user.login .ui-button-text {
+    padding-bottom: 2px;
+    padding-top: 2px;
+}
+
+#user.login button {
+    float: right;
+}
+
+#user.login button.ui-button-icons-only {
+    width: 30px !important;
+/*     padding-top: 1px; */
+/*     padding-bottom: 1px; */
+}
+#user.login  .ui-button-icon-secondary {
+    right: 0em !important;
+}
+#user.login .ui-button-icon-primary {
+    left: 0 !important;
+}
+#user.login a {
+    color: #ffffff;
+    font-size: 12px;
+    display: block;
 }
 /* FIN de Sección del top */
 
@@ -161,4 +218,84 @@ FATAL rojo chillon parpadeante*/
     clear: both;
     width: 900px;
     margin: 0 auto 0 auto;
+}
+
+#packages .package {
+    border: 2px solid #9e8266;
+    background: #f9f8f6 url(../img/package_background.png) bottom repeat-x;
+    padding: 4px;
+    margin: 4px;
+}
+
+#packages .package > span.chapter {
+    font-weight: bold;
+    color: #f07804;
+}
+
+#packages .package > span.chapter:before {
+    content: 'Cap. ';
+    color: #363636;
+}
+
+#packages .package .name {
+    width: 400px;
+}
+
+#packages .package ul {
+    margin: 0;
+    margin-top: 2px;
+}
+
+#packages .package span.part:before {
+    content: 'Parte ';
+}
+
+#packages ul {
+    padding-left: 0;
+}
+
+#packages li {
+    list-style: none;
+    margin-left: 20px;
+    font-size: 12px;
+}
+
+#packages li input {
+    font-size: 11px;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: #116397;
+    border-bottom: 1px dotted #116397;
+}
+
+#packages .package > input {
+    font-size: 13px;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: #116397;
+    border-bottom: 1px dotted #116397;
+}
+
+#packages .package .size {
+    width: 70px;
+}
+
+#packages .package .statusup {
+    color: #509711;
+}
+
+#packages .delete {
+    min-width: 12px;
+    min-height: 12px;
+    padding-left: 14px;
+    float: right;
+    font-size: 11px;
+    background: url(../img/delete_package.png) no-repeat;
+}
+
+#packages .delete:hover {
+    color: #c80f0f;
+    background: url(../img/delete_package_hover.png) no-repeat;
 }

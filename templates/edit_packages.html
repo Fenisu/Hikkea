@@ -1,28 +1,50 @@
+{% load forms %}
         <div>
             <div id="sorted">
-                <div>
-                    <ol>
-                            <li>Add your items here</li>
-                            <li>Archivo 1</li>
-                            <li>Archivo 2</li>
-                    </ol>
-                </div>
+                <input type="hidden" name="server" value="{{ packages.1.1.server }}" />
+                <ul class="packages">
+                    <li>
+                        <div class="package csshidden">
+                            <span class="chapter">0</span>
+                        </div>
+                    </li>
+                {% for chapter, package in packages.items %}
+                    <li>
+                        <div class="package">
+                            <input type="hidden" name="pkg_{{ package.npackage }}_chapter" value="{{ chapter }}" />
+                            <span class="chapter">{{ chapter }}</span>
+                            <input type="text" name="pkg_{{ package.npackage }}_name" class="name" value="{{ package.1.name|namepackage }}" />
+                            <div class="delete" title="Eliminar">Eliminar capítulo</div>
+                            <ul{% if type_packages == 'dd' %} class="part"{% endif %}>
+                                {% for part, file in package|items %}
+                                <li>
+                                    {% if type_packages == 'dd' %}<span class="part">{{ part }}</span>{% endif %}
+                                    <input type="text" name="file_{{ file.nfile }}_name" value="{{ file.name }}" class="tolastpos" />
+                                    <span>Tamaño</span>
+                                    <input type="text" name="file_{{ file.nfile }}_size2" value="{{ file.size2 }}"  class="size" />
+                                    <span{% if file.status %} class="statusup"{% endif %}>{{ file.url }}</span>
+                                    <input type="hidden" name="file_{{ file.nfile }}_status" value="{{ file.status }}" />
+                                    <input type="hidden" name="file_{{ file.nfile }}_server" value="{{ file.server }}" />
+                                    <input type="hidden" name="file_{{ file.nfile }}_url" value="{{ file.url }}" />
+                                    <input type="hidden" name="file_{{ file.nfile }}_chapter" value="{{ file.chapter }}" />
+                                    <input type="hidden" name="file_{{ file.nfile }}_part" value="{{ part }}" />
+                                    <div class="delete" title="Eliminar"></div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </li>
+                {% endfor %}
+                </ul>
             </div>
             <div id="unsorted">
-                <div>
-                    <ol>
-                            <li>Add your items here</li>
-                            <li>Archivo 1</li>
-                            <li>Archivo 2</li>
-                    </ol>
-                </div>
-            </div>
+                <ul class="packages">
+                
+                </ul>
             </div>
             <div id="unrecognized">
-                <ol>
-                        <li>Add your items here</li>
-                        <li>Archivo 1</li>
-                        <li>Archivo 2</li>
-                </ol>
+                <ul class="packages">
+                
+                </ul>
             </div>
         </div>

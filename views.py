@@ -10,6 +10,7 @@ from django.forms.models import modelformset_factory as mff
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import simplejson
 from django.db.models.query import QuerySet
+from django.db.models import Q
 import json
 import copy
 import re
@@ -18,25 +19,13 @@ from threading import Thread
 
 import hikkea.models as model 
 import hikkea.ddservers
+from hikkea import filesmanager
 
 # Variables comunes que tendrán todas las páginas
 DATA = {
     'sitename': 'Hikkea',
     'lang': 'es-ES',
     }
-
-# Se crea un diccionario con los "plugins" para servidores
-# de DD soportados.
-ddservers = {}
-for server in hikkea.ddservers.__all__:
-    mod = __import__('hikkea.ddservers', globals(), locals(), [server], 0)
-    mod = getattr(mod, server)
-    ddservers[server] = mod.Server()
-
-# Extensiones de vídeo
-extensions = []
-for container in model.Container.objects.all():
-    extensions.append(container.ext)
 
 def transform(data):
     """
@@ -104,6 +93,7 @@ def edit_release(request, ttype, taction, tid):
     return response('edit_release.html', request,
                     {'form': form,
                      'title': '%s release - %s' % (action_name, DATA['sitename']),
+                     'last_pkg': 0,
                      })
 
 def edit_title(request, ttype, taction, tid):
@@ -126,17 +116,6 @@ def edit_title(request, ttype, taction, tid):
                      'title': '%s release - %s' % (action_name, DATA['sitename']),
                      })
 
-def search_link(regex, text):
-    """
-    Buscar mediante un patrón Regex links en el
-    texto dado por el usuario (campo id Links)
-    y quitarlos del texto.
-    """
-    links = re.findall(regex, text)
-    for link in links:
-        text.replace(link, '')
-    return links, text
-
 def filters_get_chapter(name):
     """
     Filtros que se aplicarán para impedir errores
@@ -145,9 +124,9 @@ def filters_get_chapter(name):
     # Se quitan los CRC32
     name = re.sub('\[([a-fA-F0-9]{8})\]', '', name)
     # Se quita la extensión del archivo
-    name = name.split('.')[:-1]
+    name = '.'.join(name.split('.')[:-1])
     # Se quita el partX
-    name = re.sub('\.part\d+$', '', name)
+    name = re.sub('\.part\d+$|\.|d+$', '', name)
     return name
 
 def get_chapter(name_a, name_b):
@@ -171,81 +150,101 @@ def get_chapter(name_a, name_b):
     name_b_groups = re.findall('(\d+)', name_b)
     for name_a_group in re.findall('(\d+)', name_a):
         if i > len(name_b_groups):
-            return False
+            return None
         if name_a_group != name_b_groups[i]:
             return i
-    return False
+    return None
+
+def get_packages(text, last_pkg, first_name):
+    # Un listado con diccionarios de los links
+    links = []
+    # Tipo de descarga, p2p o dd
+    type_packages = None
+    # Un listado con los errores ocurridos
+    errors = []
+    # El último paquete para ID
+    last_pkg = int(last_pkg)
+    # Es la primera petición
+    if last_pkg:
+        first_request = False
+    else:
+        first_request = True
+    # Información del archivo de vídeo
+    datafile = False
+    # Otra información varia (como el fansub)
+    other_data = {}
+
+    # Primeros se buscan links de descarga Directa
+    for server in model.DirectDownloadServer.objects.all():
+        links_server, text = filesmanager.search_link(server.regex, text)
+        if links_server:
+            # Se han encontrado enlaces
+            type_packages = 'dd'
+        else:
+            continue
+        # Obtener información de los links. Los resultados se
+        # Guardan en 'links'
+        filesmanager.gets_urls_info(server, links_server, links, errors)
+        # Si es la primera petición y el servidor tiene premium,
+        # se baja el primer capítulo para ver la información
+        if not last_pkg and ddservers[server.name.lower()].premium:
+            datafile = filesmanager.get_data_file(server, links)
+    
+    # ### P2P....
+    
+    # Detectar el fansub si es la primera petición y el primer
+    # capítulo tiene nombre
+    if not last_pkg and links[0]['name']:
+        microname, fansub = filesmanager.get_fansub(links[0]['name'])
+        other_data['fansub_microname'] = microname
+        other_data['fansub'] = fansub
+    # Intentar detectar el número de capítulo
+    filesmanager.get_chapters(links)
+    
+    packages, unsorted, last_pkg = filesmanager.organize_links(links)
+    
+    unrecognized = re.findall('([^ ]+):([^ ]+)', text)
+    
+    
+    
+    video_data = {'download_type': type_packages}
+    video_data['container'] = filesmanager.get_ddbb_data('Container', {'mime': datafile.mime})
+    video_data['videocodec'] = filesmanager.get_ddbb_data('VideoCodec', {'name': datafile.video[0].codec})
+    
+    
+    if model.Container.objects.filter(mime=datafile.mime):
+        false_post_data['container'] = str(model.Container.objects.get(mime=datafile.mime).id)
+    if model.VideoCodec.objects.filter(name=datafile.video[0].codec):
+        false_post_data['videocodec'] = \
+                             str(model.VideoCodec.objects.get(name=datafile.video[0].codec).id)
+    if model.VideoResolution.objects.filter(width=datafile.video[0].width,
+                                                               height=datafile.video[0].height):
+        false_post_data['resolution'] = str(model.VideoResolution.objects.get(width=datafile.video[0].width,
+                                            height=datafile.video[0].height).id)
+    if model.AudioCodec.objects.filter(name=datafile.audio[0].codec):
+        false_post_data['audiocodec'] = str(model.AudioCodec.objects.get(name=datafile.audio[0].codec).id)
+    if 'samplerate' in dir(datafile.audio[0]) and \
+                         model.AudioHertz.objects.filter(name=datafile.audio[0].samplerate):
+        false_post_data['audiohertz'] = \
+           str(model.AudioHertz.objects.get(name=float(datafile.audio[0].samplerate)).id)
+    form = model.ReleaseForm(false_post_data)
+    return response('edit_release.html', request, {'last_pkg': last_pkg,
+                                                   'unsorted': unsorted,
+                                                   'packages': packages,
+                                                   'first_request': first_request,
+                                                   'first_name': links[0]['name'],
+                                                   'type_packages': type_packages,
+                                                   'form': form,
+                                                   'ajax': True,
+                                                   'other_data': other_data,
+                                                    })
 
 @csrf_exempt
 def ajax_add_packages(request):
     text = request.POST['links']
-    links = []
-    # Primeros se buscan links de descarga Directa
-    type_packages = None
-    for server in model.DirectDownloadServer.objects.all():
-        links_server, text = search_link(server.regex, text)
-        if links_server:
-            type_packages = 'dd'
-        # El servidor tiene un plugin para detectar datos y
-        # comprobar el estado
-        if links_server and server.name.lower() in hikkea.ddservers.__all__:
-            threads = []
-            for link_server in links_server:
-                thread = Thread(target=ddservers[server.name.lower()].check,
-                                args=(link_server, links))
-                thread.start()
-                threads.append(thread)
-            for thread in threads:
-                thread.join()
-            # Llegados aquí, ya todos los links se han comprobado
-            datafile = False
-            if request.POST['last_pkg'] == '0' and ddservers[server.name.lower()].premium:
-                # Detectar los datos del vídeo...
-                for link in links:
-                    # Se recorren todos los links hasta que se encuentre uno
-                    # que funcione y que sea un vídeo
-                    if link['status'] and link['name'].split('.')[-1] in extensions:
-                        datafile = ddservers[server.name.lower()].download(link['url'])
-            # Intentar detectar el número de capítulo
-            if len(links) > 1 or request.POST.get('first_name', False):
-                # Usar método por comparación de nombres
-                name_a = links[0]['name']
-                name_b = request.POST.get('first_name', request.POST['first_name'])
-                igroup = get_chapter(name_a, name_b)
-            else:
-                # El número de capítulo será el primer número que aparezca
-                igroup = 0
-            if isinstance(igroup, int):
-                for link in links:
-                    try:
-                        link['chapter'] = int(re.findall('(\d+)', link['name'])[igroup])
-                    except IndexError:
-                        pass
-            #print(datafile)
-            last_package = int(request.POST.get('last_pkg', '0'))
-            packages = {}
-            unsorted = []
-            for link in links:
-                if 'chapter' in link:
-                    if not link['chapter'] in packages.keys() and type_packages == 'dd':
-                        packages[link['chapter']] = {}
-                    if not link['chapter'] in packages.keys() and type_packages == 'p2p':
-                        packages[link['chapter']] = []
-                    if type_packages == 'dd':
-                        # Se busca si es una de varias partes
-                        part = re.findall('\.(\d+)$|\.part(\d+)', link.url)
-                        if part:
-                            part = int(part[0])
-                        else:
-                            part = 1
-                        packages[link['chapter']] = {part: link}
-                    elif type_packages == 'p2p':
-                        packages[link['chapter']].append(link)
-                else:
-                    unsorted.append(link)
-        # Como solo puede haber 1 server por Release, se ignoran los demás
-        break
-    unrecognized = re.findall('([^ ]+):([^ ]+)', text)
+    last_pkg = request.POST.get('last_pkg', '0')
+    first_name = request.POST.get('first_name', False)
+    get_packages(text, last_pkg, first_name)
 
 def ajax_search_title(request):
     titles = model.Title.objects.filter(name__contains=request.GET['term'])
@@ -253,3 +252,12 @@ def ajax_search_title(request):
     for title in titles:
         titles_list.append([title.id, title.__unicode__()])
     return jsonresponse(titles_list)
+
+def ajax_search_fansub(request):
+    term = request.GET['term']
+    qset = (Q(name__contains=term) | Q(microname__contains=term))
+    fansubs = model.Fansub.objects.filter(qset)
+    fansubs_list = []
+    for fansub in fansubs:
+        fansubs_list.append([fansub.id, fansub.__unicode__()])
+    return jsonresponse(fansubs_list)

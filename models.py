@@ -138,7 +138,7 @@ class Image(models.Model):
     u otra dependiendo de las preferencias del usuario y
     de los administradores del sistema.
     '''
-    cheksum = models.ForeignKey('CheckSum', blank=False) # original Image
+    checksum = models.ForeignKey('CheckSum', blank=False) # original Image
     filename = models.CharField(max_length=128, blank=True, null=True)
     height = models.IntegerField()
     width = models.IntegerField()
@@ -477,7 +477,7 @@ class Title(models.Model):
     # Impedir cambios a usuarios normales.
     close = models.BooleanField(default=False)
     def __unicode__(self):
-        return '%s' % self.accepted.name
+        return '%s, %s' % (self.accepted.name, self.accepted.type.name)
 
 class Medal(models.Model):
     '''
@@ -518,7 +518,7 @@ class Fansub(models.Model):
     jabber = models.CharField(max_length=128, blank=True)
     contact = models.EmailField(max_length=128, blank=True) # Email
     logo = models.ForeignKey(Image, blank=True, null=True)
-    start_year = models.IntegerField(blank=True)
+    start_year = models.IntegerField(blank=True, null=True)
     # Las medallas son dadas por el sistema, no las toma el fansub
     medals = models.ManyToManyField(Medal, blank=True, null=True)
     # Las releases oficiales son las creadas y publicadas por el
@@ -560,7 +560,7 @@ class FansubUser(models.Model):
 class VideoCodec(models.Model):
     '''
     Códec de vídeo. Permite una descripción y votos por los usuarios.
-    Un ejemplo sería H.264. Permite además establecer un qualitiy,
+    Un ejemplo sería H.264. Permite además establecer un qualitity,
     para definir lo bueno que es este códec. Las puntuaciones vienen
     dadas del 1 al 10.
     '''
@@ -568,7 +568,7 @@ class VideoCodec(models.Model):
     description = models.CharField(max_length=2048, blank=True)
     quality = models.IntegerField()
     users_score = models.ForeignKey(Poll, blank=True, null=True)
-    main = models.BooleanField() # Codec recomendado
+    main = models.BooleanField(default=False) # Codec recomendado
     def __unicode__(self):
         return '%s' % self.name
  
@@ -581,7 +581,7 @@ class AudioCodec(models.Model):
     description = models.CharField(max_length=2048, blank=True)
     quality = models.IntegerField()
     users_score = models.ForeignKey(Poll, blank=True, null=True)
-    main = models.BooleanField()
+    main = models.BooleanField(default=False)
     def __unicode__(self):
         return '%s' % self.name
 
@@ -593,7 +593,7 @@ class SubtitleCodec(models.Model):
     name = models.CharField(max_length=32, blank=False)
     description = models.CharField(max_length=2048, blank=True, null=True)
     quality = models.IntegerField()
-    users_score = models.ForeignKey(Poll, blank=True)
+    users_score = models.ForeignKey(Poll, blank=True, null=True)
     main = models.BooleanField()
     def __unicode__(self):
         return '%s' % self.name
@@ -621,39 +621,43 @@ class VideoAspectRatio(models.Model):
  
 class VideoResolution(models.Model):
     '''
-    Resolución de vídeo. resolution viene dado de la siguiente
-    manera: <anchura>x<altura>. Por ejemplo, 1920x1080. El
-    quality es igual que en los códecs. 
+    Resolución de vídeo.
     '''
-    resolution = models.CharField(max_length=32, blank=False)
+    name = models.CharField(max_length=32, blank=False)
     width = models.IntegerField()
     height = models.IntegerField()
     quality = models.IntegerField(blank=True)
     users_score = models.ForeignKey(Poll, blank=True, null=True)
-    main = models.BooleanField()
+    main = models.BooleanField(default=False)
+    aspect = models.ForeignKey(VideoAspectRatio)
     def __unicode__(self):
-        return '%s' % self.resolution
+        return '%ix%i (%s)' % (self.width, self.height, self.name)
  
 class AudioChannel(models.Model):
     '''
     Audio Channels, 2.1, 5.1...
     '''
-    name = models.CharField(max_length=16, blank=False)
+    name = models.IntegerField(blank=False)
     description = models.CharField(max_length=2048, blank=True)
     users_score = models.ForeignKey(Poll, blank=True, null=True)
     quality = models.IntegerField()
     main = models.BooleanField()
     def __unicode__(self):
-        return '%s' % self.name
+        if self.name == 1:
+            return '%i canal' % self.name
+        else:
+            return '%i canales' % self.name
  
 class AudioHertz(models.Model):
     '''
     Audio Hertz, 44.1, 48... khz
     '''
-    name = models.CharField(max_length=16, blank=False)
-    quality = models.IntegerField()
+    name = models.FloatField(blank=False)
     def __unicode__(self):
-        return '%s' % self.name
+        if self.name > 1000:
+            return '%.1f kHz' % (self.name / 1000.0)
+        else:
+            return '%f Hz' % self.name
  
 class Container(models.Model):
     '''
@@ -661,10 +665,16 @@ class Container(models.Model):
     '''
     name = models.CharField(max_length=64, blank=False)
     ext = models.CharField(max_length=8, blank=False)
+    mime = models.CharField(max_length=64, blank=False)
     description = models.CharField(max_length=2048, blank=True)
     users_score = models.ForeignKey(Poll, blank=True, null=True)
     quality = models.IntegerField()
-    main = models.BooleanField()
+    main = models.BooleanField(blank=True, default=True)
+    def extensions(self):
+        exts = []
+        for container in model.Container.objects.all():
+            exts.append(container.ext)
+        return exts
     def __unicode__(self):
         return '%s (.%s)' % (self.name, self.ext)
  
@@ -768,12 +778,20 @@ class Release(models.Model):
         return '%s' % self.title.name
 
 class ReleaseForm(forms.ModelForm):
-    download_type = forms.CharField(widget=forms.RadioSelect(choices=DOWNLOAD_TYPE))
+    download_type = forms.CharField(widget=forms.RadioSelect(choices=DOWNLOAD_TYPE,
+                                               attrs={'class': 'update_vals download_type'})
+                                    )
+    submitter_comment = forms.CharField(widget=forms.Textarea(attrs={'rows':4, 'cols':40}))
+
     class Meta:
         model = Release
     def __init__(self, *args, **kwargs):
         super(ReleaseForm, self).__init__(*args, **kwargs)
-
+        self.fields['container'].widget.attrs = {'class': 'update_vals container'}
+        self.fields['videocodec'].widget.attrs = {'class': 'update_vals videocodec'}
+        self.fields['resolution'].widget.attrs = {'class': 'update_vals resolution'}
+        self.fields['audiocodec'].widget.attrs = {'class': 'update_vals audiocodec'}
+        self.fields['audiohertz'].widget.attrs = {'class': 'update_vals audiohertz'}
 class CheckSumType(models.Model):
     '''
     Ateniendo a la posibilidad de que no se llegue a un
