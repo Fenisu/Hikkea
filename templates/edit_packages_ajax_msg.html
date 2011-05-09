@@ -1,0 +1,24 @@
+{% extends base %}
+
+{% block prevscripts %}
+ajax_enter = {
+    '#content': {
+        'to': '',
+        'action': 'none',
+        'effect': ''
+    },
+    '#messages': {
+        'to': '#messages',
+        'action': 'append',
+        'effect': 'instant',
+    },
+} 
+{% endblock %}
+
+{% block content %}
+<div id="messages">
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+</div>
+{% endblock %}

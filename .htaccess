@@ -1,0 +1,5 @@
+SetHandler python-program
+PythonHandler django.core.handlers.modpython
+SetEnv DJANGO_SETTINGS_MODULE hikkea.settings
+PythonDebug On
+PythonPath "['/home/ixl01052/django'] + sys.path"
