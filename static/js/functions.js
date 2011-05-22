@@ -28,15 +28,22 @@ $(document.body).ready(function (){
                             $('[class="' + name + '"][value="' + $(obj).attr('value') + '"]').attr('checked', 'checked')
                         }
                     } else if($(obj).is('select')) {
-                        console.debug($(obj).val())
-                        $('[class="' + name + '"]').val($(obj).val())
+                        $('[class="' + name + '"]').val($(obj).val());
                     } else {
                         var value = $(obj).val();
-                        if(!$('[class="' + name + '"]').val()||$('[class="' + name + '"]').attr('title')==$('[class="' + name + '"]').val()){
-                            $('[class="' + name + '"]').val(value)
+                        if($(obj).is('.update_by_name')){
+                            if(!$('[name="' + $(obj).attr('name') + '"]').val()){
+                                $('[name="' + $(obj).attr('name') + '"]').val(value)
+                            }
+                        }
+                        else if(!$('[class="' + name + '"]').val()||$('[class="' + name + '"]').attr('title')==$('[class="' + name + '"]').val()){
+                            $('[class="' + name + '"]').val(value);
                         }
                     }
                 });
+            } else if(val['action']=='append') {
+                from = $('<div />').html(data).find(key).html();
+                $(val['to']).append(from);
             } else {
                 val['action'](data, key, val)
             }
@@ -52,9 +59,10 @@ $(document.body).ready(function (){
     }
     
     $(function() {
-        $("#logs").dialog({width: 400, height: 200,
-                           position: [$(document).width() - 450, 40]
-        });
+        $('#logs').hide();
+//         $("#logs").dialog({width: 400, height: 200,
+//                            position: [$(document).width() - 450, 40]
+//         });
     });
     logging = function(){
         function print(mode, text){

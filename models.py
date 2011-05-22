@@ -672,7 +672,7 @@ class Container(models.Model):
     main = models.BooleanField(blank=True, default=True)
     def extensions(self):
         exts = []
-        for container in model.Container.objects.all():
+        for container in Container.objects.all():
             exts.append(container.ext)
         return exts
     def __unicode__(self):
@@ -716,8 +716,8 @@ class Release(models.Model):
     # cuando después se va a crear el Title.
     title = models.ForeignKey(Title, blank=True, null=True)
     fansub = models.ManyToManyField(Fansub, blank=False)
-    # alang se refiere a Idioma de Audio
-    alang = models.ManyToManyField(Language, blank=False,
+    # alang se refiere a Idioma de Audio, sobre en Manga
+    alang = models.ManyToManyField(Language, blank=True, null=True,
                     related_name="%(app_label)s_%(class)s_alang_related")
     # slang se refiere a Idioma de Subtítulo
     slang = models.ManyToManyField(Language, blank=False,
@@ -759,7 +759,7 @@ class Release(models.Model):
     
     # Un breve comentario. No se permite añadir links ni nada
     # parecido en los comentarios.
-    submitter_comment = models.CharField(max_length=500, blank=True)
+    submitter_comment = models.CharField(max_length=500, blank=True, null=True)
     open_comments = models.BooleanField(default=True)
     comments = models.ManyToManyField(Comment, blank=True, null=True)
     screenshots = models.ManyToManyField(Image, blank=True, null=True)
@@ -769,7 +769,7 @@ class Release(models.Model):
     # La crítica lo considera el método principal
     accepted = models.BooleanField(default=False)
     add_date = models.DateTimeField(auto_now_add=True)
-    edit_date = models.DateTimeField(blank=True)
+    edit_date = models.DateTimeField(blank=True, null=True)
     edit_user = models.ForeignKey(User, blank=True, null=True,
                     related_name="%(app_label)s_%(class)s_edituser_related")
     edit_reason = models.CharField(max_length=128, blank=True)
@@ -781,7 +781,9 @@ class ReleaseForm(forms.ModelForm):
     download_type = forms.CharField(widget=forms.RadioSelect(choices=DOWNLOAD_TYPE,
                                                attrs={'class': 'update_vals download_type'})
                                     )
-    submitter_comment = forms.CharField(widget=forms.Textarea(attrs={'rows':4, 'cols':40}))
+    submitter_comment = forms.CharField(widget=forms.Textarea(attrs={'rows':4, 'cols':40}),
+                                        required=False,
+                                        )
 
     class Meta:
         model = Release
@@ -877,7 +879,7 @@ class DirectDownload(models.Model):
     online = models.BooleanField(blank=False)
     checksum = models.ForeignKey(CheckSum, blank=True, null=True)
     part = models.IntegerField(blank=True) # In split files
-    last_check = models.DateTimeField(blank=True)
+    last_check = models.DateTimeField(blank=True, null=True)
     mirrors = models.ManyToManyField('self', blank=True, null=True)
     protection = models.ManyToManyField(Protection, blank=True, null=True)
     def __unicode__(self):
@@ -898,7 +900,7 @@ class DirectDownloadPackage(models.Model):
     '''
     name = models.CharField(max_length=512, blank=True, null=True)
     size = models.IntegerField(blank=True)
-    checksum = models.ForeignKey(CheckSum, blank=True)
+    checksum = models.ForeignKey(CheckSum, blank=True, null=True)
     files = models.ManyToManyField(DirectDownload, blank=False)
     release = models.ForeignKey(Release, blank=True, null=True)  
     def __unicode__(self):

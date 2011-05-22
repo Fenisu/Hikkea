@@ -19,6 +19,9 @@ ajax_enter = {'#content': {'to': '',
                                          $.each($(packages), function(index, package){
                                              var npackage = $(package).find('.chapter').text() - 1
                                              var after_to = $(val['to']).find('ul.packages').children('li:eq(' + npackage + ')')
+                                             if(!after_to.html()){
+                                                 var after_to = $(val['to']).find('ul.packages:last')
+                                             }
                                              $(after_to).after($(package))
                                          });
                                      },
@@ -54,7 +57,11 @@ $('#links').live('paste keypress', function(event){
             window['lock_links'] = true
             htmlAjax('{% url views.ajax_add_packages %}',
                      ({'links': diff.add_list.join(''),
-                       'last_pkg': last_pkg}),
+                       'last_pkg': last_pkg,
+                       'arg0': "{{ arg0 }}",
+                       'arg1': "{{ arg1 }}",
+                       'arg2': "{{ arg2 }}",
+                        }),
                      'lock_links'
                     )
         }, 100);
@@ -91,7 +98,8 @@ $('input.tolastpos').setCursor2LastPosition()
 {% endblock %}
 
 {% block content %}
-<form enctype="multipart/form-data" action="" method="post">
+<form enctype="multipart/form-data" action="{% url views.edit_release arg0 arg1 arg2 %}" method="post">
+    {{ form.management_form }}
     <div>
         <div class="jshidden">{{ form.forms.0.title.label_tag }}</div><input id="title_name" type="text" name="title_name" maxlength="64" title="Título de la obra" />
         <select name="form-0-title" id="id_form-0-title" class="csshidden">
@@ -105,9 +113,10 @@ $('input.tolastpos').setCursor2LastPosition()
     <div>
         <textarea id="links" title="Pegue aquí los links de las descargas" rows="6" cols="40"></textarea>
     </div>
+    <div id="messages"></div>
     {% if form.download_type %}{{ form.download_type }}{% else %}{{ form.forms.0.download_type }}{% endif %}
     <div>
-        <label for="fansub_name">Fansub</label><input id="fansub_name" type="text" name="fansub_name" maxlength="64" class="update_vals fansub_name" value="{% if other_data.fansub %}{{ other_data.fansub.name }}, {{ other_data.fansub.microname }}{% endif %}" />
+        <label for="fansub_name">Fansub</label><input id="fansub_name" type="text" name="fansub_name" maxlength="64" class="update_vals update_by_name fansub_name" value="{% if other_data.fansub %}{{ other_data.fansub.name }}, {{ other_data.fansub.microname }}{% endif %}" />
         <select name="form-0-fansub" id="id_form-0-fansub" class="csshidden">
             <option value="{{ other_data.fansub.id }}" selected="selected" class="update_vals fansub"></option> 
         </select>
@@ -121,5 +130,6 @@ $('input.tolastpos').setCursor2LastPosition()
     {% if form.subtitlecode %}{{ form.subtitlecode }}{% else %}{{ form.forms.0.subtitlecodec }}{% endif %}
     {% if form.alang %}{{ form.alang }}{% else %}{{ form.forms.0.alang }}{% endif %}
     {% if form.slang %}{{ form.slang }}{% else %}{{ form.forms.0.slang }}{% endif %}
+    <input type="submit" value="Enviar" />
 </form>
 {% endblock %}

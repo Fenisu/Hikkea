@@ -13,6 +13,14 @@ for server in hikkea.ddservers.__all__:
     mod = getattr(mod, server)
     ddservers[server] = mod.Server()
 
+SIZES = {
+    'T': 1 * 1024 * 1024 * 1024 * 1024,
+    'G': 1 * 1024 * 1024 * 1024,
+    'M': 1 * 1024 * 1024,
+    'K': 1 * 1024,
+    'B': 1,
+    }
+
 def search_link(regex, text):
     """
     Buscar mediante un patrón Regex links en el
@@ -35,6 +43,14 @@ def get_data_file(server, links):
     return False
 
 def get_fansub(name):
+    """
+    Obtener el nombre del fansub a partir del
+    nombre del archivo. Para esto, se lee el
+    primer texto entre corchetes que haya en
+    el nombre de archivo, y se comparará con
+    la base de datos de fansubs según el
+    micronombre.
+    """
     microname = re.findall('\[([^\]]+)\]', name)
     if microname and model.Fansub.objects.filter(microname=microname[0]):
         fansub = model.Fansub.objects.get(microname=microname[0])
@@ -43,6 +59,12 @@ def get_fansub(name):
         return '', ''
 
 def organize_links(links, last_pkg, type_packages):
+    """
+    Organizar los links por paquetes, sin orden,
+    no reconocidos, etc. Este paso llega cuando
+    ya se tiene una lista de los links y estos
+    tienen propiedades como el nombre.
+    """
     packages = {}
     unsorted = []
     last_pkg += 1
@@ -119,6 +141,11 @@ def get_chapter(name_a, name_b):
     return None
 
 def get_chapters(links, first_name):
+    """
+    Obtener los número de capítulos de los
+    archivos haciendo uso get_chapter y otras
+    técnicas.
+    """
     if len(links) > 1:
         # Hay más de 1 capítulo, por lo que se usa
         # método de comparación de nombres
@@ -148,12 +175,21 @@ def get_chapters(links, first_name):
             link['chapter'] = 1
 
 def get_ddbb_data(table, filters):
+    """
+    Obtener de la base de datos una fila.
+    Se define por table (nombre de la tabla
+    en la que buscar) y los filtros para el
+    get. El dato devuelto es el id de la tabla.
+    """
     if getattr(model, table).objects.filter(**filters):
         return str(getattr(model, table).objects.get(**filters).id)
     else:
         return ''
 
 def get_urls_info(server, links_server, links, errors):
+    """
+    Obtener información de los links obtenidos.
+    """
     if links_server and server.name.lower() in hikkea.ddservers.__all__:
         threads = []
         for link_server in links_server:
@@ -175,3 +211,16 @@ def get_urls_info(server, links_server, links, errors):
                 'server': server.name,
             }
             links.append(val)
+
+def get_size(size):
+    """
+    Obtener en Bytes un tamaño del tipo "humano"
+    (por ejemplo, "33 KiB"). Se omite si son
+    bytes o bits, se tratará siempre como bytes.
+    """
+    keys = re.findall('([A-z])', size)
+    if not keys: return 0
+    if not keys[0].upper() in SIZES.keys(): return 0
+    number = re.findall('(\d+|\.|,)', size)
+    if not number: return 0
+    return int(float(number[0]) * SIZES[keys[0].upper()])

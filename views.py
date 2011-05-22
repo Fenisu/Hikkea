@@ -15,7 +15,6 @@ import json
 import copy
 import re
 import time
-from threading import Thread
 
 import hikkea.models as model 
 import hikkea.ddservers
@@ -72,6 +71,7 @@ def index(request):
     return response('index.html', request,
                     {'title': 'Inicio - ' + DATA['sitename']})
 
+@csrf_exempt
 def edit_release(request, ttype, taction, tid):
     """
     Formulario para Editar o añadir una Release.
@@ -80,21 +80,76 @@ def edit_release(request, ttype, taction, tid):
     estrechamente relacionadas (se realizan peticiones
     mediante Ajax).
     """
-    if not model.TitleType.objects.filter(name=ttype):
-        return HttpResponseBadRequest()
     form_set = mff(model.Release, form=model.ReleaseForm)
-    if taction == 'add':
-        action_name = 'Añadiendo'
-        form = form_set(queryset=model.Release.objects.none())
-    elif model.Release.objects.filter(id=tid):
-        # SIN TERMINAR
-        title = model.Release.objects.get(id=tid)
-        form = form_set(queryset=model.Release.objects.none())
-    return response('edit_release.html', request,
-                    {'form': form,
-                     'title': '%s release - %s' % (action_name, DATA['sitename']),
-                     'last_pkg': 0,
-                     })
+    if request.method == "POST" and taction == 'add':
+        f = form_set(request.POST, queryset=model.Release.objects.none())
+        # El usuario se pone manualmente en el modo en desarrollo
+        f.data['form-0-user'] = '1'
+        f.user = model.User.objects.get(id=1)
+        files = {}
+        pkgs = {}
+        chapters = {}
+        for key, value in request.POST.items():
+            key = key.split('_')
+            if key[0] == 'file':
+                dct = files
+            elif key[0] == 'pkg':
+                dct = pkgs
+            else:
+                continue
+            if not int(key[1]) in dct.keys():
+                dct[int(key[1])] = {}
+            dct[int(key[1])][key[2]] = value
+        print(files)
+        print(pkgs)
+        print(f.errors)
+        f.save()
+
+        if request.POST['form-0-download_type'] == 'dd':
+            for file in files.values():
+                if not file['status'] == 'True': continue
+                new_file = model.DirectDownload()
+                new_file.url = file['url']
+                new_file.filename = file['name']
+                new_file.size = filesmanager.get_size(file['size2'])
+                new_file.server = model.DirectDownloadServer.objects.get(
+                    name=file['server'].title(),
+                )
+                new_file.online = True
+                #new_file.checksum = # Para uso posteriormente
+                new_file.part = file['part']
+                new_file.save()
+                if not file['chapter'] in chapters.keys():
+                    chapters[file['chapter']] = []
+                chapters[file['chapter']].append(new_file)
+            for pkg in pkgs.values():
+                new_pkg = model.DirectDownloadPackage()
+                new_pkg.name = pkg['name']
+                total_size = 0
+                for file in chapters[pkg['chapter']]:
+                    new_pkg.files.add(file.id)
+                    total_size += file.size
+                new_pkg.size = total_pkg
+                new_pkg.release = f
+                
+    else:
+        if not model.TitleType.objects.filter(name=ttype):
+            return HttpResponseBadRequest()
+        if taction == 'add':
+            action_name = 'Añadiendo'
+            form = form_set(queryset=model.Release.objects.none())
+        elif model.Release.objects.filter(id=tid):
+            # SIN TERMINAR
+            title = model.Release.objects.get(id=tid)
+            form = form_set(queryset=model.Release.objects.none())
+        return response('edit_release.html', request,
+                        {'form': form,
+                        'title': '%s release - %s' % (action_name, DATA['sitename']),
+                        'last_pkg': 0,
+                        'arg0': ttype,
+                        'arg1': taction,
+                        'arg2': tid,
+                        })
 
 def edit_title(request, ttype, taction, tid):
     """
@@ -115,45 +170,6 @@ def edit_title(request, ttype, taction, tid):
                     {'form': form,
                      'title': '%s release - %s' % (action_name, DATA['sitename']),
                      })
-
-def filters_get_chapter(name):
-    """
-    Filtros que se aplicarán para impedir errores
-    en el get_chapter
-    """
-    # Se quitan los CRC32
-    name = re.sub('\[([a-fA-F0-9]{8})\]', '', name)
-    # Se quita la extensión del archivo
-    name = '.'.join(name.split('.')[:-1])
-    # Se quita el partX
-    name = re.sub('\.part\d+$|\.|d+$', '', name)
-    return name
-
-def get_chapter(name_a, name_b):
-    """
-    Esta función halla la primera posición en la que
-    hay un número distinto entre 2 archivos. Su uso
-    es detectar la posición del número de capítulo
-    sin equivocarse con un número del nombre del
-    título. Ejemplo:
-    2x2 Shinobuden 01.mkv
-    2x2 Shinobuden 02.mkv
-    En este caso, la posición que cambia será la tercera,
-    la del 01 y del 02. El número que se devolverá será
-    un 2, ya que el índice comienza por cero (0,1 2).
-    En caso de no haber resultados, se devolverá False
-    """
-    i = 0
-    name_a = filters_get_chapter(name_a)
-    name_b = filters_get_chapter(name_b)
-    # Quita 
-    name_b_groups = re.findall('(\d+)', name_b)
-    for name_a_group in re.findall('(\d+)', name_a):
-        if i > len(name_b_groups):
-            return None
-        if name_a_group != name_b_groups[i]:
-            return i
-    return None
 
 def get_packages(text, last_pkg, first_name):
     # Un listado con diccionarios de los links
@@ -184,14 +200,17 @@ def get_packages(text, last_pkg, first_name):
             continue
         # Obtener información de los links. Los resultados se
         # Guardan en 'links'
-        filesmanager.gets_urls_info(server, links_server, links, errors)
+        filesmanager.get_urls_info(server, links_server, links, errors)
         # Si es la primera petición y el servidor tiene premium,
         # se baja el primer capítulo para ver la información
-        if not last_pkg and ddservers[server.name.lower()].premium:
+        if not last_pkg and filesmanager.ddservers[server.name.lower()].premium:
             datafile = filesmanager.get_data_file(server, links)
     
     # ### P2P....
     
+    
+    if not links:
+        return
     # Detectar el fansub si es la primera petición y el primer
     # capítulo tiene nombre
     if not last_pkg and links[0]['name']:
@@ -199,52 +218,62 @@ def get_packages(text, last_pkg, first_name):
         other_data['fansub_microname'] = microname
         other_data['fansub'] = fansub
     # Intentar detectar el número de capítulo
-    filesmanager.get_chapters(links)
-    
-    packages, unsorted, last_pkg = filesmanager.organize_links(links)
-    
+    filesmanager.get_chapters(links, first_name)
+    packages, unsorted, last_pkg = filesmanager.organize_links(links, last_pkg,
+                                                               type_packages)
     unrecognized = re.findall('([^ ]+):([^ ]+)', text)
-    
-    
-    
     video_data = {'download_type': type_packages}
-    video_data['container'] = filesmanager.get_ddbb_data('Container', {'mime': datafile.mime})
-    video_data['videocodec'] = filesmanager.get_ddbb_data('VideoCodec', {'name': datafile.video[0].codec})
+    if datafile:
+        video_data['container'] = filesmanager.get_ddbb_data('Container',
+                                                {'mime': datafile.mime})
+        video_data['videocodec'] = filesmanager.get_ddbb_data('VideoCodec', 
+                                                {'name': datafile.video[0].codec})
+        video_data['resolution'] = filesmanager.get_ddbb_data('VideoResolution', 
+                                                {'width': datafile.video[0].width,
+                                                'height': datafile.video[0].height})
+        video_data['audiocodec'] = filesmanager.get_ddbb_data('AudioCodec', 
+                                                {'name': datafile.audio[0].codec})
+        video_data['audiohertz'] = filesmanager.get_ddbb_data('AudioHertz', 
+                                                {'name': float(datafile.audio[0].samplerate)})
     
-    
-    if model.Container.objects.filter(mime=datafile.mime):
-        false_post_data['container'] = str(model.Container.objects.get(mime=datafile.mime).id)
-    if model.VideoCodec.objects.filter(name=datafile.video[0].codec):
-        false_post_data['videocodec'] = \
-                             str(model.VideoCodec.objects.get(name=datafile.video[0].codec).id)
-    if model.VideoResolution.objects.filter(width=datafile.video[0].width,
-                                                               height=datafile.video[0].height):
-        false_post_data['resolution'] = str(model.VideoResolution.objects.get(width=datafile.video[0].width,
-                                            height=datafile.video[0].height).id)
-    if model.AudioCodec.objects.filter(name=datafile.audio[0].codec):
-        false_post_data['audiocodec'] = str(model.AudioCodec.objects.get(name=datafile.audio[0].codec).id)
-    if 'samplerate' in dir(datafile.audio[0]) and \
-                         model.AudioHertz.objects.filter(name=datafile.audio[0].samplerate):
-        false_post_data['audiohertz'] = \
-           str(model.AudioHertz.objects.get(name=float(datafile.audio[0].samplerate)).id)
-    form = model.ReleaseForm(false_post_data)
-    return response('edit_release.html', request, {'last_pkg': last_pkg,
-                                                   'unsorted': unsorted,
-                                                   'packages': packages,
-                                                   'first_request': first_request,
-                                                   'first_name': links[0]['name'],
-                                                   'type_packages': type_packages,
-                                                   'form': form,
-                                                   'ajax': True,
-                                                   'other_data': other_data,
-                                                    })
+    return  {
+        'last_pkg': last_pkg,
+        'unsorted': unsorted,
+        'packages': packages,
+        'first_request': first_request,
+        'links': links,
+        'type_packages': type_packages,
+        'ajax': True,
+        'errors': errors,
+        'other_data': other_data,
+        'video_data': video_data,
+    }
 
 @csrf_exempt
 def ajax_add_packages(request):
     text = request.POST['links']
     last_pkg = request.POST.get('last_pkg', '0')
     first_name = request.POST.get('first_name', False)
-    get_packages(text, last_pkg, first_name)
+    data = get_packages(text, last_pkg, first_name)
+    if not data:
+        return response('edit_packages_ajax_msg.html', request,{
+            'messages': ['No se encontraron links.'], 
+        })
+    form = model.ReleaseForm(data['video_data'])
+    return response('edit_release.html', request, {
+        'last_pkg': data['last_pkg'],
+        'unsorted': data['unsorted'],
+        'packages': data['packages'],
+        'first_request': data['first_request'],
+        'first_name': data['links'][0]['name'],
+        'type_packages': data['type_packages'],
+        'form': form,
+        'ajax': True,
+        'other_data': data['other_data'],
+        'arg0': request.POST['arg0'],
+        'arg1': request.POST['arg1'],
+        'arg2': request.POST['arg2'],
+    })
 
 def ajax_search_title(request):
     titles = model.Title.objects.filter(name__contains=request.GET['term'])
